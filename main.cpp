@@ -1,6 +1,7 @@
 #include <iostream>
 #include <queue>
 #include <stack>
+#include <cmath>
 #include "functions.h"
 
 using namespace std;
@@ -17,8 +18,10 @@ queue<string> pars_que;
 bool isVariable = false;
 bool isFunction = false;
 // vector<string> returnStatements[128];
-vector<pair<string, queue<string>>> functions[32];
-vector<pair<string, double>> vars[64];
+vector<string> functionsN;
+vector<pair<string, queue<string>>> functions;
+vector<string> varsN;
+vector<pair<string, double>> vars;
 // pair<string, int> funcVars[16];
 
 
@@ -93,8 +96,7 @@ void parsStatement() {
 }
 
 double calculate(queue<string> que) {
-    double num2 = 0;
-    double num1 = 0;
+    double num1 = 0, num2 = 0;
     stack<double> _stack;
 
     for (auto item: que) {
@@ -102,30 +104,43 @@ double calculate(queue<string> que) {
         if (isNumber(item))
         {
             _stack.push(stod(item));
+            continue;
         }
-        else
+        if (auto idx = find(varsN, item)) {
+            _stack.push(vars[idx].second);
+            continue;
+        }
+        /*if (auto funcIdx = find(functionsN, item)) {
+            auto func = functions[funcIdx];
+            auto funcName = func.first;
+            for (int i = 0; i <= to_integer<string>(funcName[0]); i++) {
+                nums->push_back(_stack.top());
+                _stack.pop();
+            }
+            double funcVal = func.second;
+        }*/
+        if (item == "abs") {
+            num1 = _stack.top();
+            _stack.pop();
+            _stack.push(abs(num1));
+            continue;
+        }
+
+
+        switch (item)
         {
-            num2 = Convert.ToDouble(_stack.Pull());
-            if (!"sin cos".Contains(item))
-            {
-                num1 = Convert.ToDouble(_stack.Pull());
-            }
-
-            switch (item)
-            {
-                case "@": _stack.Push((Math.Min(num1, num2)).ToString()); break;
-                case "+": _stack.Push((num1 + num2).ToString()); break;
-                case "-": _stack.Push((num1 - num2).ToString()); break;
-                case "*": _stack.Push((num1 * num2).ToString()); break;
-                case "/": _stack.Push((num1 / num2).ToString()); break;
-                case "^": _stack.Push((Math.Pow(num1, num2)).ToString()); break;
-                case "max": _stack.Push((Math.Max(num1, num2)).ToString()); break;
-                case "sin": _stack.Push((Math.Sin(num2)).ToString()); break;
-                case "cos": _stack.Push((Math.Cos(num2)).ToString()); break;
-            }
-
+            case "+": _stack.push(num1 + num2); break;
+            case "-": _stack.push(num1 - num2); break;
+            case "*": _stack.push(num1 * num2); break;
+            case "/": _stack.push(num1 / num2); break;
+            case "max": _stack.push(max(num1, num2)); break;
+            case "min": _stack.push(min(num1, num2)); break;
+            case "pow": _stack.push(pow(num1, num2)); break;
         }
     }
+    auto result = move(_stack.top());
+    _stack.pop();
+    return move(result);
 }
 
 
@@ -146,34 +161,40 @@ int main() {
             isVariable = true;
             pars_que.pop();
             string v_name = pars_que.front();
-            vars->push_back(make_pair(v_name, 0));
+            varsN.push_back(v_name);
+            vars.push_back(make_pair(v_name, 0));
             pars_que.pop();
             if (pars_que.front() != "=") {
                 cout << "Error, no = iterator" << endl;
-                return -1;
+                continue;
             }
             pars_que.pop();
             parsStatement();
             double result = calculate(s_que);
-            vars->end()->second = result;
+            vars.end()->second = result;
             continue;
-        } else if (pars_que.front() == "def") {
+        }
+        if (pars_que.front() == "def") {
             isFunction = true;
             pars_que.pop();
-            functions->push_back(make_pair(move(pars_que.front()), queue<string>()));
+            string func_name = pars_que.front();
             pars_que.pop();
             if (auto arg = move(pars_que.front()) != "(") {
                 cout << "Compiling error" << arg << endl;
-                return -1;
+                continue;
             }
+            int varCount = 0;
             while (pars_que.front() != ")") {
-                vars->push_back(make_pair(pars_que.front().c_str(), 0));
+                vars.push_back(make_pair(pars_que.front().c_str(), 0));
                 pars_que.pop();
+                varCount++;
             }
             pars_que.pop();
 
             parsStatement();
-            functions->end()->second = s_que;
+            functionsN.push_back(func_name);
+            func_name = to_string(varCount) + func_name;
+            functions.push_back(make_pair(func_name, s_que));
             continue;
         }
         parsStatement();
