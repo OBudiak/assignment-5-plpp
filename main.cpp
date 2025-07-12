@@ -2,6 +2,9 @@
 #include <queue>
 #include <stack>
 #include <cmath>
+#include <algorithm>
+#include <map>
+
 #include "functions.h"
 
 using namespace std;
@@ -17,21 +20,11 @@ queue<string> pars_que;
 
 bool isVariable = false;
 bool isFunction = false;
-// vector<string> returnStatements[128];
 vector<string> functionsN;
-vector<pair<string, queue<string>>> functions;
+map<string, vector<string>> functionsA;
+map<string, queue<string>> functions;
 vector<string> varsN;
-vector<pair<string, double>> vars;
-// pair<string, int> funcVars[16];
-
-
-/*auto pushCom = [=](string& s) {
-    if (s.empty()) {
-        return;
-    }
-    if ()
-    pars_que.push(s);
-};*/
+map<string, double> vars;
 
 void moveChar(char element) {
     if (specSymbols->find(element)) {
@@ -59,7 +52,6 @@ int parsWithPriority(string element) {
     if (auto idx = priorityCommands->find(element)) {
         while (pars_que.front() != "" && priorityPower[idx] <= priorityPower[priorityCommands->find(s_stk.top())]) {
             s_que.push(move(s_stk.top()));
-            // previousEl = move(element);
             s_stk.pop();
         }
         s_stk.push(element);
@@ -68,14 +60,6 @@ int parsWithPriority(string element) {
     }
     s_que.push(element);
     return 1;
-
-    // //?? ? ??????? ???????, ?? ???? ?? ??????????????? ?? ????
-    // if (isVar(pars_que.front(), element)) {
-    //
-    //     // vars->push(pair<string, int>(element, 0));
-    // }
-    // cout << "Compiling error!\n" << "Error element - " << element << endl;
-    // return -1;
 }
 
 void clear_s_queue() {
@@ -90,7 +74,6 @@ void parsStatement() {
     for (int i = 0; i < pars_que.size(); i++) {
         errors = parsWithPriority(pars_que.front());
         if (errors == -1) break;
-        // previousEl = move(pars_que.front());
         pars_que.pop();
     }
 }
@@ -110,15 +93,6 @@ double calculate(queue<string> que) {
             _stack.push(vars[idx].second);
             continue;
         }
-        /*if (auto funcIdx = find(functionsN, item)) {
-            auto func = functions[funcIdx];
-            auto funcName = func.first;
-            for (int i = 0; i <= to_integer<string>(funcName[0]); i++) {
-                nums->push_back(_stack.top());
-                _stack.pop();
-            }
-            double funcVal = func.second;
-        }*/
         if (item == "abs") {
             num1 = _stack.top();
             _stack.pop();
@@ -162,7 +136,7 @@ int main() {
             pars_que.pop();
             string v_name = pars_que.front();
             varsN.push_back(v_name);
-            vars.push_back(make_pair(v_name, 0));
+            vars[v_name] = 0;
             pars_que.pop();
             if (pars_que.front() != "=") {
                 cout << "Error, no = iterator" << endl;
@@ -184,17 +158,32 @@ int main() {
                 continue;
             }
             int varCount = 0;
+            vector<string> functions_args;
             while (pars_que.front() != ")") {
-                vars.push_back(make_pair(pars_que.front().c_str(), 0));
+                vars[pars_que.front().c_str()] = 0;
+                functions_args.push_back(pars_que.front().c_str());
                 pars_que.pop();
                 varCount++;
             }
+            functionsA[func_name] = move(functions_args);
             pars_que.pop();
 
             parsStatement();
             functionsN.push_back(func_name);
             func_name = to_string(varCount) + func_name;
-            functions.push_back(make_pair(func_name, s_que));
+            functions[func_name] = s_que;
+            continue;
+        }
+        auto var = find(functionsN.begin(), functionsN.end(), pars_que.front());
+        if (functionsN.end() != var) {
+            auto funcName = pars_que.front();
+            size_t funcIdx = var - functionsN.begin();
+            for (auto arg : functionsA[funcName]) {
+                vars[arg] = stod(pars_que.front());
+                pars_que.pop();
+            }
+            double result = calculate(functions[funcName]);
+            cout << result << endl;
             continue;
         }
         parsStatement();

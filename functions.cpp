@@ -22,7 +22,6 @@ bool isNumber(const string& s) {
     if (s[0] == '-') i++;
 
     bool hasDigit = false;
-    bool hasDot = false;
 
     for (; i < s.size(); ++i) {
         if (isdigit(s[i])) {
