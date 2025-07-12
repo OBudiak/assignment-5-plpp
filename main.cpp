@@ -3,6 +3,7 @@
 #include <stack>
 #include <cmath>
 #include <algorithm>
+#include <functional>
 #include <map>
 
 #include "functions.h"
@@ -27,7 +28,7 @@ vector<string> varsN;
 map<string, double> vars;
 
 void moveChar(char element) {
-    if (specSymbols->find(element)) {
+    if (specSymbols->find(to_string(element))) {
         if (line.empty()) {
             return;
         }
@@ -82,15 +83,16 @@ double calculate(queue<string> que) {
     double num1 = 0, num2 = 0;
     stack<double> _stack;
 
-    for (auto item: que) {
+    while (!que.empty()) {
+        auto item = move(que.front());
 
         if (isNumber(item))
         {
             _stack.push(stod(item));
             continue;
         }
-        if (auto idx = find(varsN, item)) {
-            _stack.push(vars[idx].second);
+        if (varsN.end() != find(varsN.begin(), varsN.end(), item)) {
+            _stack.push(vars[item]);
             continue;
         }
         if (item == "abs") {
@@ -101,15 +103,19 @@ double calculate(queue<string> que) {
         }
 
 
-        switch (item)
-        {
-            case "+": _stack.push(num1 + num2); break;
-            case "-": _stack.push(num1 - num2); break;
-            case "*": _stack.push(num1 * num2); break;
-            case "/": _stack.push(num1 / num2); break;
-            case "max": _stack.push(max(num1, num2)); break;
-            case "min": _stack.push(min(num1, num2)); break;
-            case "pow": _stack.push(pow(num1, num2)); break;
+        static const map<std::string, function<double(double,double)>> ops = {
+            { "+", [](double a,double b){ return a+b; } },
+            { "-", [](double a,double b){ return a-b; } },
+            { "*", [](double a,double b){ return a*b; } },
+            { "/", [](double a,double b){ return a/b; } },
+            { "max", [](double a,double b){ return std::max(a,b); } },
+            { "min", [](double a,double b){ return std::min(a,b); } },
+            { "pow", [](double a,double b){ return std::pow(a,b); } }
+        };
+
+        auto it = ops.find(item);
+        if (it != ops.end()) {
+            _stack.push(it->second(num1, num2));
         }
     }
     auto result = move(_stack.top());
@@ -121,7 +127,7 @@ double calculate(queue<string> que) {
 
 int main() {
     while (true) {
-        cin >> line;
+        getline(cin, line);
         if (line == "exit") {
             break;
         }

@@ -8,9 +8,18 @@
 
 using namespace std;
 
-inline string specSymbols[];
-inline int priorityPower[];
-inline string priorityCommands[];
+inline string specSymbols[] = {" ", "{", "}", "(", ")", ",", "=", "{", "}", "(", ")",
+    "*", "/",
+    "+", "-"};
+
+inline int priorityPower[] = {/*6, 6,*/ 5, 5, 5, 5, 4, 4, 4, 4, 3, 3, 2, 2/*, 1, 1*/};
+inline string priorityCommands[] = {//",", "=",
+    "{", "}", "(", ")",
+    "max", "min", "pow", "abs",
+    "*", "/",
+    "+", "-"
+    // "def", "var",
+};
 
 bool isNumber(const std::string& s);
 bool isVar(const string& previous, const string& element);
