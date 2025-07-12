@@ -28,40 +28,48 @@ vector<string> varsN;
 map<string, double> vars;
 
 void moveChar(char element) {
-    if (specSymbols->find(to_string(element))) {
-        if (line.empty()) {
-            return;
+    string token(1, element);
+    if (find(begin(specSymbols), end(specSymbols), token) != end(specSymbols)) {
+        if (!command.empty()) {
+            pars_que.push(command);
+            command.clear();
         }
-        pars_que.push(command);
-        if (element != ' ' || element != ',')
-            pars_que.push(string(1, element));
-        command.clear();
+        if (element != ' ' && element != ',') {
+            pars_que.push(token);
+        }
         return;
     }
     command.push_back(element);
-
 }
 
-int parsWithPriority(string element) {
-    //?? ? ??????
+
+int parsWithPriority(const string& element) {
     if (isNumber(element)) {
         s_que.push(element);
         return 1;
     }
-
-    //???? ???????/?????? ? ? ?????? ?????? ? ????????
-    if (auto idx = priorityCommands->find(element)) {
-        while (pars_que.front() != "" && priorityPower[idx] <= priorityPower[priorityCommands->find(s_stk.top())]) {
-            s_que.push(move(s_stk.top()));
-            s_stk.pop();
+    auto it = find(begin(priorityCommands), end(priorityCommands), element);
+    if (it != end(priorityCommands)) {
+        int idx = it - begin(priorityCommands);
+        int pri = priorityPower[idx];
+        while (!s_stk.empty()) {
+            auto top = s_stk.top();
+            auto it2 = find(begin(priorityCommands), end(priorityCommands), top);
+            int pri2 = (it2 != end(priorityCommands)
+                        ? priorityPower[it2 - begin(priorityCommands)]
+                        : 0);
+            if (pri <= pri2) {
+                s_que.push(top);
+                s_stk.pop();
+            } else break;
         }
         s_stk.push(element);
-
         return 1;
     }
     s_que.push(element);
     return 1;
 }
+
 
 void clear_s_queue() {
     while (!s_que.empty()) {
@@ -71,56 +79,54 @@ void clear_s_queue() {
 
 void parsStatement() {
     clear_s_queue();
+    while (!s_stk.empty()) s_stk.pop();
 
-    for (int i = 0; i < pars_que.size(); i++) {
-        errors = parsWithPriority(pars_que.front());
-        if (errors == -1) break;
+    while (!pars_que.empty()) {
+        parsWithPriority(pars_que.front());
         pars_que.pop();
+    }
+
+    while (!s_stk.empty()) {
+        s_que.push(s_stk.top());
+        s_stk.pop();
     }
 }
 
+
 double calculate(queue<string> que) {
-    double num1 = 0, num2 = 0;
-    stack<double> _stack;
-
+    stack<double> stk;
     while (!que.empty()) {
-        auto item = move(que.front());
-
-        if (isNumber(item))
-        {
-            _stack.push(stod(item));
-            continue;
+        string item = que.front();
+        que.pop();
+        if (isNumber(item)) {
+            stk.push(stod(item));
         }
-        if (varsN.end() != find(varsN.begin(), varsN.end(), item)) {
-            _stack.push(vars[item]);
-            continue;
+        else if (find(varsN.begin(), varsN.end(), item) != varsN.end()) {
+            stk.push(vars[item]);
         }
-        if (item == "abs") {
-            num1 = _stack.top();
-            _stack.pop();
-            _stack.push(abs(num1));
-            continue;
+        else if (item == "abs") {
+            double a = stk.top(); stk.pop();
+            stk.push(abs(a));
         }
-
-
-        static const map<std::string, function<double(double,double)>> ops = {
-            { "+", [](double a,double b){ return a+b; } },
-            { "-", [](double a,double b){ return a-b; } },
-            { "*", [](double a,double b){ return a*b; } },
-            { "/", [](double a,double b){ return a/b; } },
-            { "max", [](double a,double b){ return std::max(a,b); } },
-            { "min", [](double a,double b){ return std::min(a,b); } },
-            { "pow", [](double a,double b){ return std::pow(a,b); } }
-        };
-
-        auto it = ops.find(item);
-        if (it != ops.end()) {
-            _stack.push(it->second(num1, num2));
+        else {
+            static const map<string, function<double(double,double)>> ops = {
+                { "+", [](double a,double b){ return a+b; } },
+                { "-", [](double a,double b){ return a-b; } },
+                { "*", [](double a,double b){ return a*b; } },
+                { "/", [](double a,double b){ return a/b; } },
+                { "max", [](double a,double b){ return max(a,b); } },
+                { "min", [](double a,double b){ return min(a,b); } },
+                { "pow", [](double a,double b){ return pow(a,b); } }
+            };
+            auto it = ops.find(item);
+            if (it != ops.end() && stk.size() >= 2) {
+                double b = stk.top(); stk.pop();
+                double a = stk.top(); stk.pop();
+                stk.push(it->second(a,b));
+            }
         }
     }
-    auto result = move(_stack.top());
-    _stack.pop();
-    return move(result);
+    return stk.empty() ? 0.0 : stk.top();
 }
 
 
@@ -132,9 +138,12 @@ int main() {
             break;
         }
 
-        for (int i = 0; i < line.length(); i++) {
-            moveChar(line[i]);
+        for (char c : line) moveChar(c);
+        if (!command.empty()) {
+            pars_que.push(command);
+            command.clear();
         }
+
         line.clear();
 
         if (pars_que.front() == "var") {
@@ -151,7 +160,7 @@ int main() {
             pars_que.pop();
             parsStatement();
             double result = calculate(s_que);
-            vars.end()->second = result;
+            vars[v_name] = result;
             continue;
         }
         if (pars_que.front() == "def") {
@@ -180,21 +189,30 @@ int main() {
             functions[func_name] = s_que;
             continue;
         }
-        auto var = find(functionsN.begin(), functionsN.end(), pars_que.front());
-        if (functionsN.end() != var) {
-            auto funcName = pars_que.front();
-            size_t funcIdx = var - functionsN.begin();
-            for (auto arg : functionsA[funcName]) {
-                vars[arg] = stod(pars_que.front());
+        else if (!pars_que.empty() && find(functionsN.begin(), functionsN.end(), pars_que.front()) != functionsN.end()) {
+            string funcName = pars_que.front();
+            pars_que.pop();
+            if (!pars_que.empty() && pars_que.front() == "(")
                 pars_que.pop();
+            for (auto& arg : functionsA[funcName]) {
+                if (!pars_que.empty() && pars_que.front() == ",")
+                    pars_que.pop();
+                if (!pars_que.empty()) {
+                    vars[arg] = stod(pars_que.front());
+                    pars_que.pop();
+                }
             }
+            if (!pars_que.empty() && pars_que.front() == ")")
+                pars_que.pop();
             double result = calculate(functions[funcName]);
             cout << result << endl;
-            continue;
         }
-        parsStatement();
-        double result = calculate(s_que);
-        cout << result << endl;
+        else {
+            parsStatement();
+            double result = calculate(s_que);
+            cout << result << endl;
+        }
+        while (!pars_que.empty()) pars_que.pop();
 
         if (errors == -1) break;
     }
